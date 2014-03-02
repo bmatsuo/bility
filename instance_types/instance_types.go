@@ -29,7 +29,7 @@ func main() {
 	r := csv.NewReader(file)
 	r.FieldsPerRecord = -1 // some files have fewer fields than headers
 
-	header, err := ReadHeader(r)
+	header, err := csvutil.ReadHeader(r)
 	if err != nil {
 		log.Fatalf("failed reading csv header; %v", err)
 	}
@@ -57,12 +57,12 @@ func main() {
 
 var BadRowTypeErr = fmt.Errorf("bad row type")
 
-func GetBoxType(header CSVHeader, cols []string) (string, error) {
+func GetBoxType(header csvutil.Header, cols []string) (string, error) {
 	for _, filter := range []struct{ col, value string }{
 		{"ProductName", "Amazon Elastic Compute Cloud"},
 		{"Operation", "RunInstances"},
 	} {
-		val, err := GetColumn(header, cols, filter.col)
+		val, err := csvutil.GetColumn(header, cols, filter.col)
 		if err != nil {
 			return "", err
 		}
@@ -73,7 +73,7 @@ func GetBoxType(header CSVHeader, cols []string) (string, error) {
 
 	var boxtype string
 	boxtypePrefix := "BoxUsage"
-	utype, err := GetColumn(header, cols, "UsageType")
+	utype, err := csvutil.GetColumn(header, cols, "UsageType")
 	if err != nil {
 		return "", err
 	}
@@ -92,36 +92,4 @@ func GetBoxType(header CSVHeader, cols []string) (string, error) {
 	}
 
 	return boxtype, nil
-}
-
-var UnknownColumnErr = fmt.Errorf("unknown column")
-var MissingColumnErr = fmt.Errorf("missing column")
-
-// Returns UnknownColumnErr if name does not exist in header.
-// Returns MissingColumnErr if cols does not contain a name column (not enough
-// columns).
-func GetColumn(header CSVHeader, cols []string, name string) (string, error) {
-	i, ok := header[name]
-	if !ok {
-		return "", UnknownColumnErr
-	}
-	if i >= len(cols) {
-		return "", MissingColumnErr
-	}
-	return cols[i], nil
-}
-
-type CSVHeader map[string]int
-
-func ReadHeader(r *csv.Reader) (CSVHeader, error) {
-	cols, err := r.Read()
-	if err != nil { // EOF too
-		return nil, err
-	}
-	header := make(map[string]int, len(cols))
-	for i := range cols {
-		// assumes no collisions
-		header[cols[i]] = i
-	}
-	return header, nil
 }
