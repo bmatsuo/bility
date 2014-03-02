@@ -1,10 +1,9 @@
 package main
 
 import (
-	//"github.com/bmatsuo/csv"
+	"github.com/bmatsuo/bility/go-csvutil"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -36,7 +35,7 @@ func main() {
 	}
 
 	// process rows as a stream
-	rowch := CSVRowStream(r, 1)
+	rowch := csvstream.NewStream(r, 1)
 	seen := make(map[string]bool, 0)
 	for row := range rowch {
 		if row.Err != nil {
@@ -125,31 +124,4 @@ func ReadHeader(r *csv.Reader) (CSVHeader, error) {
 		header[cols[i]] = i
 	}
 	return header, nil
-}
-
-type CSVRow struct {
-	Cols []string
-	Err  error
-}
-
-// read from r asynchronously.
-func CSVRowStream(r *csv.Reader, bufsize uint) <-chan *CSVRow {
-	ch := make(chan *CSVRow, bufsize)
-	go func() {
-		defer close(ch)
-		for {
-			cols, err := r.Read()
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				log.Print("err ", err)
-				ch <- &CSVRow{nil, err}
-				return
-			}
-			ch <- &CSVRow{cols, nil}
-		}
-		panic("unreachable")
-	}()
-	return ch
 }

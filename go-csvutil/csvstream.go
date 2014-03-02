@@ -5,7 +5,7 @@ Package csvstream provides simple asynchronous streaming for CSV data.
 It requires continuation logic to be implemented by the application as
 errors depend of the configuration of csv.Reader structs.
 */
-package csvstream
+package csvutil
 
 import (
 	"encoding/csv"
@@ -24,7 +24,7 @@ type Stream <-chan *Row
 // channel and the channel is closed. It is up to the application to
 // decide if a new Stream should be created to continue reading from
 // r.
-func New(r *csv.Reader, bufsize uint) Stream {
+func NewStream(r *csv.Reader, bufsize uint) Stream {
 	ch := make(chan *Row, bufsize)
 	go func() {
 		defer close(ch)
