@@ -1,13 +1,17 @@
+// BUG (potential bug) rows which are missing a column for a tag are considered to
+// have no value for that tag. No aggregation is performed for that tag on that row.
+// It's not immediately clear if this is a bad thing..
 package main
 
 import (
+	"github.com/bmatsuo/bility/go-awsbilling"
+	"github.com/bmatsuo/bility/go-csvutil"
+
 	"encoding/csv"
 	"fmt"
-	"github.com/bmatsuo/bility/go-csvutil"
+	"io"
 	"log"
 	"os"
-	"io"
-	"strings"
 	"strconv"
 	"time"
 )
@@ -29,20 +33,28 @@ func main() {
 	}
 	defer file.Close()
 
-	r := csv.NewReader(file)
-	r.FieldsPerRecord = -1 // some files have fewer fields than headers
-
-	header, err := csvutil.ReadHeader(r)
+	header, stream, err := awsbilling.NewCSVStream(file, 1)
 	if err != nil {
-		log.Fatalf("failed reading csv header; %v", err)
+		log.Fatalf("failed opening csv stream; %v", err)
 	}
 
-	tags := GetAWSTags(header)
-
 	costs := make(DateTagValueCostTable)
+	dumpAndDie := func() {
+		// dumps cost summary as csv and exits when called
+		err := costs.WriteCSV(os.Stdout)
+		if err != nil {
+			log.Fatal("output error: ", err)
+		}
+		os.Exit(0)
+	}
 
-	// process rows as a stream
-	for row := range csvutil.NewStream(r, 1) {
+	tags := awsbilling.GetTags(header)
+	if len(tags) == 0 {
+		log.Print("no tags present in header")
+		dumpAndDie()
+	}
+
+	for row := range stream {
 		if row.Err != nil {
 			log.Fatalf("failed reading csv data; %v", row.Err)
 		}
@@ -50,31 +62,29 @@ func main() {
 		dailyCost, err := AWSDailyCost(header, row.Cols)
 		if err != nil {
 			log.Printf("error reading cost: %v (%v)", err, row.Cols)
+			continue
 		}
 
 		for _, tag := range tags {
-			val, err := csvutil.GetColumn(header, row.Cols, tag.csvheader)
+			val, err := csvutil.GetColumn(header, row.Cols, tag.CSVHeader())
 			if err != nil {
-				log.Printf("error reading tag: %v (%v)", err, row.Cols)
+				log.Printf("error reading tag %q: %v (%v)",
+					tag.CSVHeader(), err, row.Cols)
+				continue
 			}
 
 			for date, cost := range dailyCost {
-				key := [3]string{date, tag.name, val}
+				key := [3]string{date, tag.Name(), val}
 				costs[key] += cost
 			}
 		}
 	}
 
-	err = costs.WriteCSV(os.Stdout)
-	if err != nil {
-		log.Print("output error: ", err)
-	}
+	dumpAndDie()
 }
 
-const AWSTimeFormat = "2006-01-02 15:04:05"
-
 func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, error) {
-	_cost, err := csvutil.GetColumn(header, cols, "UnBlendedCost")
+	_cost, err := csvutil.GetColumn(header, cols, awsbilling.H_UnBlendedCost)
 	if err != nil || _cost == "" {
 		return nil, nil
 	}
@@ -83,20 +93,20 @@ func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, err
 		return nil, fmt.Errorf("coludn't parse cost %q: %v", _cost, err)
 	}
 
-	_start, err := csvutil.GetColumn(header, cols, "UsageStartDate")
+	_start, err := csvutil.GetColumn(header, cols, awsbilling.H_UsageStartDate)
 	if err != nil || _start == "" {
 		return nil, nil
 	}
-	start, err := time.Parse(AWSTimeFormat, _start)
+	start, err := awsbilling.ParseTime(_start)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse start time %q: %v", _start, err)
 	}
 
-	_end, err := csvutil.GetColumn(header, cols, "UsageEndDate")
+	_end, err := csvutil.GetColumn(header, cols, awsbilling.H_UsageEndDate)
 	if err != nil || _end == "" {
 		return nil, nil
 	}
-	end, err := time.Parse(AWSTimeFormat, _end)
+	end, err := awsbilling.ParseTime(_end)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse end time %q: %v", _end, err)
 	}
@@ -114,7 +124,7 @@ func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, err
 	for done := false; !done; {
 		todayEnd := today.Round(24 * time.Hour)
 		if todayEnd.Before(today) || todayEnd.Equal(today) {
-			todayEnd = todayEnd.Add(24 *time.Hour)
+			todayEnd = todayEnd.Add(24 * time.Hour)
 		}
 		if end.Before(todayEnd) {
 			todayEnd = end
@@ -145,34 +155,4 @@ func (table DateTagValueCostTable) WriteCSV(w io.Writer) error {
 	}
 	csvw.Flush()
 	return csvw.Error()
-}
-
-type AWSTag struct {
-	name      string
-	csvheader string
-}
-
-func GetAWSTags(header csvutil.Header) []*AWSTag {
-	tags := make([]*AWSTag, 0, len(header)/2) // somewhat arbitrary cap
-	// will not be sorted
-	for colname := range header {
-		tag, err := ParseAWSTag(colname)
-		if err == nil {
-			tags = append(tags, tag)
-		}
-	}
-	return tags
-}
-
-const AWSTagPrefix = "user:"
-
-func ParseAWSTag(csvheader string) (*AWSTag, error) {
-	if strings.HasPrefix(csvheader, AWSTagPrefix) {
-		tag := &AWSTag{
-			name: csvheader[len(AWSTagPrefix):],
-			csvheader: csvheader,
-		}
-		return tag, nil
-	}
-	return nil, fmt.Errorf("not a tag")
 }

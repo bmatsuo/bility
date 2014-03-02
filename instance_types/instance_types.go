@@ -1,8 +1,9 @@
 package main
 
 import (
+	"github.com/bmatsuo/bility/go-awsbilling"
 	"github.com/bmatsuo/bility/go-csvutil"
-	"encoding/csv"
+
 	"fmt"
 	"log"
 	"os"
@@ -26,18 +27,15 @@ func main() {
 	}
 	defer file.Close()
 
-	r := csv.NewReader(file)
-	r.FieldsPerRecord = -1 // some files have fewer fields than headers
 
-	header, err := csvutil.ReadHeader(r)
+	header, stream, err := awsbilling.NewCSVStream(file, 1)
 	if err != nil {
-		log.Fatalf("failed reading csv header; %v", err)
+		log.Fatalf("failed opening data stream; %v", err)
 	}
 
-	// process rows as a stream
-	rowch := csvutil.NewStream(r, 1)
 	seen := make(map[string]bool, 0)
-	for row := range rowch {
+
+	for row := range stream {
 		if row.Err != nil {
 			log.Fatalf("failed reading csv data; %v", row.Err)
 		}
@@ -59,8 +57,8 @@ var BadRowTypeErr = fmt.Errorf("bad row type")
 
 func GetBoxType(header csvutil.Header, cols []string) (string, error) {
 	for _, filter := range []struct{ col, value string }{
-		{"ProductName", "Amazon Elastic Compute Cloud"},
-		{"Operation", "RunInstances"},
+		{awsbilling.H_ProductName, "Amazon Elastic Compute Cloud"},
+		{awsbilling.H_Operation, "RunInstances"},
 	} {
 		val, err := csvutil.GetColumn(header, cols, filter.col)
 		if err != nil {
