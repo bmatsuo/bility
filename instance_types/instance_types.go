@@ -35,7 +35,7 @@ func main() {
 	}
 
 	// process rows as a stream
-	rowch := csvstream.NewStream(r, 1)
+	rowch := csvutil.NewStream(r, 1)
 	seen := make(map[string]bool, 0)
 	for row := range rowch {
 		if row.Err != nil {
