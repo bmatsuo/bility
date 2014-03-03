@@ -37,6 +37,7 @@ const (
 	H_UsageStartDate = "UsageStartDate"
 	H_UsageEndDate   = "UsageEndDate"
 	H_UnBlendedCost  = "UnBlendedCost"
+	H_ResourceId     = "ResourceId"
 )
 
 const TimeFormat = "2006-01-02 15:04:05"
