@@ -39,19 +39,11 @@ func main() {
 	}
 
 	costs := make(DateTagValueCostTable)
-	dumpAndDie := func() {
-		// dumps cost summary as csv and exits when called
-		err := costs.WriteCSV(os.Stdout)
-		if err != nil {
-			log.Fatal("output error: ", err)
-		}
-		os.Exit(0)
-	}
 
 	tags := awsbilling.GetTags(header)
 	if len(tags) == 0 {
 		log.Print("no tags present in header")
-		dumpAndDie()
+		dumpAndDie(costs)
 	}
 
 	for row := range stream {
@@ -80,7 +72,16 @@ func main() {
 		}
 	}
 
-	dumpAndDie()
+	dumpAndDie(costs)
+}
+
+func dumpAndDie(costs DateTagValueCostTable) {
+	// dumps cost summary as csv and exits when called
+	err := costs.WriteCSV(os.Stdout)
+	if err != nil {
+		log.Fatal("output error: ", err)
+	}
+	os.Exit(0)
 }
 
 func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, error) {
@@ -116,9 +117,6 @@ func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, err
 		return nil, fmt.Errorf("start time after end time")
 	}
 
-	type date struct {
-		year, month, day int
-	}
 	dateCost := make(map[string]float64)
 	today := start
 	for done := false; !done; {
@@ -141,6 +139,7 @@ func AWSDailyCost(header csvutil.Header, cols []string) (map[string]float64, err
 	return dateCost, nil
 }
 
+// slices are not hashable
 type DateTagValueCostTable map[[3]string]float64
 
 func (table DateTagValueCostTable) WriteCSV(w io.Writer) error {
