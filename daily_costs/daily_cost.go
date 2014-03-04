@@ -1,6 +1,5 @@
-// BUG (potential bug) rows which are missing a column for a tag are considered to
-// have no value for that tag. No aggregation is performed for that tag on that row.
-// It's not immediately clear if this is a bad thing..
+// rows which are missing a column for a tag are aggregated as if the column has
+// an empty string value. It's not entirely clear if this is correct. 
 package main
 
 import (
@@ -51,20 +50,23 @@ func main() {
 			log.Fatalf("failed reading csv data; %v", row.Err)
 		}
 
+		isSummary, _ := awsbilling.IsSummaryItem(header, row.Cols)
+		if isSummary {
+			continue
+		}
+
 		dailyCost, err := AWSDailyCost(header, row.Cols)
 		if err != nil {
 			log.Printf("error reading cost: %v (%v)", err, row.Cols)
 			continue
 		}
+		if len(dailyCost) == 0 {
+			continue
+		}
 
 		for _, tag := range tags {
-			val, err := csvutil.GetColumn(header, row.Cols, tag.CSVHeader())
-			if err != nil {
-				log.Printf("error reading tag %q: %v (%v)",
-					tag.CSVHeader(), err, row.Cols)
-				continue
-			}
-
+			// errors (missing columns) are treated as empty strings
+			val, _ := csvutil.GetColumn(header, row.Cols, tag.CSVHeader())
 			for date, cost := range dailyCost {
 				key := [3]string{date, tag.Name(), val}
 				costs[key] += cost

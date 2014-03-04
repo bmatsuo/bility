@@ -35,6 +35,7 @@ func NewCSVStream(r io.Reader, bufsize uint) (csvutil.Header, csvutil.Stream, er
 }
 
 const (
+	H_RecordType     = "RecordType"
 	H_ProductName    = "ProductName"
 	H_Operation      = "Operation"
 	H_UsageStartDate = "UsageStartDate"
@@ -43,11 +44,35 @@ const (
 	H_ResourceId     = "ResourceId"
 )
 
+const (
+	RT_Rounding       = "Rounding"
+	RT_InvoiceTotal   = "InvoiceTotal"
+	RT_StatementTotal = "StatementTotal"
+)
+
 // determine if the row contains EC2 instance billing.
 func IsEC2InstanceBillingItem(header csvutil.Header, cols []string) (bool, error) {
 	for _, filter := range []struct{ col, value string }{
 		{H_ProductName, "Amazon Elastic Compute Cloud"},
 		{H_Operation, "RunInstances"},
+	} {
+		val, err := csvutil.GetColumn(header, cols, filter.col)
+		if err != nil {
+			return false, err
+		}
+		if val != filter.value {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// determine if the row contains summary information (not desired for aggregations).
+func IsSummaryItem(header csvutil.Header, cols []string) (bool, error) {
+	for _, filter := range []struct{ col, value string }{
+		{H_RecordType, RT_Rounding},
+		{H_RecordType, RT_InvoiceTotal},
+		{H_RecordType, RT_StatementTotal},
 	} {
 		val, err := csvutil.GetColumn(header, cols, filter.col)
 		if err != nil {
