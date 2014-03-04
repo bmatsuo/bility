@@ -1,17 +1,23 @@
 Exercises are implemented as stand-alone, unix-friendly command line programs
 for ease of use/development. It is probably not ideal as something deployable.
-But the functionality is modular enough to rip out and stick behind some
-job-queue.
+But the functionality could easily be ripped out and stuck behind a job-queue.
 
 There are no checks for malicious documents that could run the system out of
 memory. Depending on the external dependent systems limiting a process memory
 may be a decent, albeit heavy-handed, way to mitigate this. 
 
+**Note** The Go build instructions are a little sloppy because they assume you
+already cloned the repo. You can just `go get` the programs and run them.
+
+    go get github.com/bmatsuo/bility/instance_types
+    go get github.com/bmatsuo/bility/daily_costs
+    go get github.com/bmatsuo/bility/instance_tag_changes
+
 ##Counting EC2 instance types.
 
 ###Usage
 
-Go (sloppy instructions)
+Go
 
     go get ./instance_types
     go run instance_types/instance_types.go CSV_FILE
@@ -41,7 +47,7 @@ practice, with wellformed documents, the memory is bounded by a constant.
 
 ###Usage
 
-Go (sloppy instructions)
+Go
 
     go get ./daily_cost
     go run daily_cost/daily_cost.go CSV_File
