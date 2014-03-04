@@ -6,12 +6,17 @@ There are no checks for malicious documents that could run the system out of
 memory. Depending on the external dependent systems limiting a process memory
 may be a decent, albeit heavy-handed, way to mitigate this. 
 
-**Note** The Go build instructions are a little sloppy because they assume you
+###Notes
+- The Go build instructions are a little sloppy because they assume you
 already cloned the repo. You can just `go get` the programs and run them.
 
     go get github.com/bmatsuo/bility/instance_types
     go get github.com/bmatsuo/bility/daily_costs
     go get github.com/bmatsuo/bility/instance_tag_changes
+
+- I used
+[this documentation](http://docs.aws.amazon.com/awsaccountbilling/latest/about/getbill.html#ResourceID)
+as a reference on how to work with the provided CSV data.
 
 ##Counting EC2 instance types.
 

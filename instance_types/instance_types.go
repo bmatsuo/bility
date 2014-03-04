@@ -1,3 +1,12 @@
+/*
+BUG -- Instance types for different regions (e.g. USW1-BoxUsage:m2.2xlarge) are not
+detected. Also, It's not clear from the requirements if these instances are
+considered to have a different type than, for example, BoxUsage:m2.2xlarge. Anyway,
+matching of usage types should be moved to a regexp. If data needs to be extracted
+that would be possible. If instance types in different regions have unique types
+then you could use the whole usage type string ("USW1-....") as the 'instance type'
+and not worry about extracting info.
+*/
 package main
 
 import (
