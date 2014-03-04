@@ -1,3 +1,10 @@
+/*
+I'm actually not sure yet that I've computed the tag changes correctly.
+I'm only using EC2 instance usage items and using only using their usage
+start time.  Further, the resource id is used to collate rows. It may be
+that these ids can be found elsewhere in the document and used to collect
+more information about instances. But is it redundant?
+*/
 package main
 
 import (
