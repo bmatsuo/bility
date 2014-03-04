@@ -42,7 +42,7 @@ func main() {
 			log.Fatalf("failed reading csv data; %v", row.Err)
 		}
 
-		isInstance, _ := IsEC2InstanceBilling(header, row.Cols)
+		isInstance, _ := awsbilling.IsEC2InstanceBillingItem(header, row.Cols)
 		if !isInstance {
 			continue
 		}
@@ -151,7 +151,7 @@ func (chain *tagChain) Record(t time.Time, value string) {
 		return
 	}
 
-	// TODO validate reverse iteration is the right intrinsic ordering
+	// reverse iteration appears better in terms of average number of iterations
 	n := len(chain.recs)
 	i := n - 1
 	for ; i >= 0; i-- {
@@ -166,7 +166,7 @@ func (chain *tagChain) Record(t time.Time, value string) {
 		return
 	}
 
-	// append/insert
+	// append/replace/insert
 	if i == n-1 {
 		chain.recs = append(chain.recs, &TagRecord{t, value})
 	} else if chain.recs[i+1].TagValue == value {
@@ -179,18 +179,3 @@ func (chain *tagChain) Record(t time.Time, value string) {
 	}
 }
 
-func IsEC2InstanceBilling(header csvutil.Header, cols []string) (bool, error) {
-	for _, filter := range []struct{ col, value string }{
-		{awsbilling.H_ProductName, "Amazon Elastic Compute Cloud"},
-		{awsbilling.H_Operation, "RunInstances"},
-	} {
-		val, err := csvutil.GetColumn(header, cols, filter.col)
-		if err != nil {
-			return false, err
-		}
-		if val != filter.value {
-			return false, nil
-		}
-	}
-	return true, nil
-}

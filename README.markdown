@@ -113,3 +113,7 @@ The worst/best cases for time is also the worst/best cases for space. In the wor
 case, the linked lists will has as many elements as there are rows. So the total
 space will be proportional to `(# of rows) * (# of tags)`. In the best case (one
 instance, static tags) the space required is proportionl only to the `(# of tags)`.
+
+##Testing
+
+    go test ./...

@@ -40,6 +40,11 @@ func main() {
 			log.Fatalf("failed reading csv data; %v", row.Err)
 		}
 
+		isEC2, _ := awsbilling.IsEC2InstanceBillingItem(header, row.Cols)
+		if !isEC2 {
+			continue
+		}
+
 		boxtype, err := GetBoxType(header, row.Cols)
 		if err != nil {
 			continue
@@ -56,19 +61,6 @@ func main() {
 var BadRowTypeErr = fmt.Errorf("bad row type")
 
 func GetBoxType(header csvutil.Header, cols []string) (string, error) {
-	for _, filter := range []struct{ col, value string }{
-		{awsbilling.H_ProductName, "Amazon Elastic Compute Cloud"},
-		{awsbilling.H_Operation, "RunInstances"},
-	} {
-		val, err := csvutil.GetColumn(header, cols, filter.col)
-		if err != nil {
-			return "", err
-		}
-		if val != filter.value {
-			return "", BadRowTypeErr
-		}
-	}
-
 	var boxtype string
 	boxtypePrefix := "BoxUsage"
 	utype, err := csvutil.GetColumn(header, cols, "UsageType")

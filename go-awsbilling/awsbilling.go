@@ -1,5 +1,8 @@
 // awsbilling.go [created: Sat,  1 Mar 2014]
 
+/*
+Various helper functions for dealing with AWS billing CSV reports.
+*/
 package awsbilling
 
 import (
@@ -39,6 +42,23 @@ const (
 	H_UnBlendedCost  = "UnBlendedCost"
 	H_ResourceId     = "ResourceId"
 )
+
+// determine if the row contains EC2 instance billing.
+func IsEC2InstanceBillingItem(header csvutil.Header, cols []string) (bool, error) {
+	for _, filter := range []struct{ col, value string }{
+		{H_ProductName, "Amazon Elastic Compute Cloud"},
+		{H_Operation, "RunInstances"},
+	} {
+		val, err := csvutil.GetColumn(header, cols, filter.col)
+		if err != nil {
+			return false, err
+		}
+		if val != filter.value {
+			return false, nil
+		}
+	}
+	return true, nil
+}
 
 const TimeFormat = "2006-01-02 15:04:05"
 
